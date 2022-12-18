@@ -12,6 +12,8 @@ const { parse } = require('csv-parse');
 
 // File system module used for creating a read stream of the csv file.
 const fs = require('fs');
+const path = require('path');
+
 
 // Array used to store potentially habitable planets. 
 const habitablePlanets = [];
@@ -27,32 +29,37 @@ function isHabitablePlanet(planet) {
     && planet['koi_prad'] < 1.6;
 }
 
+function loadPlanetsData() {
 // Creates a read stream of the CSV file containing planet data.
-fs.createReadStream('kepler_data.csv')
-    // Pipes the read stream into the CSV parser.
-    .pipe(parse({
-        // Instructs that '#' characters are comments, and the structures are columns.
-        comment: '#', 
-        columns: true, 
-    }))
-    // If a candidate planet meets habitability conditions, it is pushed to the array. 
-    .on('data', (data) => {
-        if(isHabitablePlanet(data)) {
-            habitablePlanets.push(data);
-        }
-    })
-    // Error handling.
-    .on('error', (err) => {
-        console.log(err);
-    })
-    // The number and name of planets are logged upon completion.
-    .on('end', () => {
-        console.log(habitablePlanets.map((planet) => {
-            return planet['kepler_name'];
-        }));
-        console.log(`${habitablePlanets.length} habitable planets found!`);
+    return new Promise((resolve, reject) => {
+        fs.createReadStream(path.join(__dirname, '..', '..', 'data', 'kepler_data.csv'))
+        // Pipes the read stream into the CSV parser.
+        .pipe(parse({
+            // Instructs that '#' characters are comments, and the structures are columns.
+            comment: '#', 
+            columns: true, 
+        }))
+        // If a candidate planet meets habitability conditions, it is pushed to the array. 
+        .on('data', (data) => {
+            if(isHabitablePlanet(data)) {
+                habitablePlanets.push(data);
+            }
+        })
+        // Error handling.
+        .on('error', (err) => {
+            console.log(err);
+            reject(err);
+            
+        })
+        // The number and name of planets are logged upon completion.
+        .on('end', () => {
+            console.log(`${habitablePlanets.length} habitable planets found!`);
+            resolve();
+        });
     });
+}
 
 module.exports = {
+    loadPlanetsData,
     planets: habitablePlanets,
 };
